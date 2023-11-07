@@ -15,7 +15,7 @@ def student_name():
     #Task 1 CODE HERE
 
     #Change to be your name
-    return 'Cosmo Cougar'
+    return 'John Tappen'
 
 class Cell():
     """
@@ -170,11 +170,38 @@ class Sudoku():
 
         # TASK 2 Code here
 
-        #Modify these return values!!
+
         if mode == 'remove':
+            grid, cell = self.get_grid_cell(row, column)
+            for i in range(9):
+                if i != row:
+                    if self.cells[i][column].remove_value(value) == False:
+                        return False
+                if i != column:
+                    if self.cells[row][i].remove_value(value) == False:
+                        return False
+                if i != cell:
+                    row1, col1 = self.get_row_column(grid,i)
+                    if self.cells[row1][col1].remove_value(value) == False:
+                        return False
+
             return True
-        elif mode == 'count': 
-            return 0
+
+        elif mode == 'count':
+            numCount = 0
+            grid, cell = self.get_grid_cell(row, column)
+            for i in range(0, 8):
+                if i != row:
+                    if value in self.cells[i][column].domain:
+                        numCount = numCount + 1
+                if i != column:
+                    if value in self.cells[row][i].domain:
+                        numCount = numCount + 1
+                if i != cell:
+                    row1, col1 = self.get_row_column(grid, i)
+                    if value in self.cells[row1][col1].domain:
+                        numCount = numCount + 1
+            return numCount
 
     def get_row_column(self, grid, cell):
         '''
@@ -210,7 +237,21 @@ def mrv(puzzle, unassigned):
     '''
 
     # Change this.  Return your list of minimum remaining value locations
-    return unassigned
+    min_cells = []
+    currentMin = float('inf')
+
+    for i in unassigned:
+        r = i[0]
+        c = i[1]
+        if len(puzzle.cells[r][c].domain)< currentMin:
+            min_cells.clear()
+            min_cells.append(i)
+            currentMin = len(puzzle.cells[r][c].domain)
+
+        if len(puzzle.cells[r][c].domain) == currentMin:
+            min_cells.append(i)
+
+    return min_cells
 
 def max_degree(puzzle, tied):
     '''
@@ -240,9 +281,20 @@ def count_constraints(puzzle, row, column):
     '''
 
     # TASK 3 CODE HERE
-    
-    #MODIFY THIS
-    # return 0
+    count = 0
+    grid, cell = puzzle.get_grid_cell(row, column)
+    for i in range(0,8):
+        if i != row:
+            if puzzle.cells[i][column].value == False:
+                count+=1
+        if i != column:
+            if puzzle.cells[row][i].value == False:
+                count+=1
+        if i != cell:
+            i, col = puzzle.get_row_column(grid, i)
+            if puzzle.cells[i][col].value == False:
+                count+=1
+    return count
 
 def get_unassigned_variables(puzzle):
     '''
@@ -295,9 +347,16 @@ def order_values(puzzle, row, column):
     domain = puzzle.cells[row][column].domain[:]
 
     # TASK 5 CODE HERE
-    
-    #Change this to return an ordered list
-    return domain
+
+    sorted_val = []
+    for i in domain:
+        forward_check = puzzle.forward_check(row, column, i, 'count')
+        sorted_val.append((i, forward_check))
+    sorted_val.sort(key=lambda x: x[1])
+    answer_list = []
+    for v in sorted_val:
+        answer_list.append(v[0])
+    return answer_list
 
 def backtracking_search(puzzle):
     '''
@@ -315,12 +374,30 @@ def backtracking_search(puzzle):
 
     # 1. Base case, is input [puzzle] solved? If so, return the puzzle. Use is_solved() function
     #    to see if the puzzle is solved.
+    if puzzle.is_solved():
+        return puzzle
 
     # 2. Select a variable to assign next ( use select_variable() function, which returns 
-    #    row and column of the variable 
+    #    row and column of the variable
+    row , col = select_variable(puzzle)
 
     # 3. Select an ordering over the values (use order_values(r,c) where r, c are the row
     #    and column of the selected variable.  It returns a list of values
+    list_val = order_values(puzzle, row, col)
+
+    for val in list_val:
+        new_puzzle = Sudoku()
+        new_puzzle.copy_puzzle(puzzle)
+        new_puzzle.cells[row][col].assign_value(val)
+        if new_puzzle.forward_check(row, col, val, 'remove'):
+            res = backtracking_search(new_puzzle)
+            if res is not None:
+                return res
+            if res is None:
+                continue
+
+    return None
+
 
     # 4. For each value in the ordered list:
 
